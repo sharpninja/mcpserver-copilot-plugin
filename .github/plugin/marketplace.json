@@ -1,0 +1,19 @@
+{
+  "name": "mcpserver-marketplace",
+  "owner": {
+    "name": "Payton Byrd (The Sharp Ninja)",
+    "email": ""
+  },
+  "metadata": {
+    "description": "McpServer workflow tools for GitHub Copilot CLI",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "mcpserver",
+      "description": "TODO management, session logging, requirements tracking, and GraphRAG knowledge graph via McpServer",
+      "version": "1.0.0",
+      "source": "."
+    }
+  ]
+}

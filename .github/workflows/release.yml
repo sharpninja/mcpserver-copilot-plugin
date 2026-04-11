@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugin manifest
+        run: |
+          python3 -c "import json; json.load(open('plugin.json'))" && echo "plugin.json OK"
+          python3 -c "import json; json.load(open('.github/plugin/marketplace.json'))" && echo "marketplace.json OK"
+          python3 -c "import json; json.load(open('hooks.json'))" && echo "hooks.json OK"
+          python3 -c "import json; json.load(open('.mcp.json'))" && echo ".mcp.json OK"
+
+      - name: Install bats
+        run: sudo apt-get update -qq && sudo apt-get install -y bats
+
+      - name: Run tests
+        run: |
+          if [ -d tests ]; then
+            bats tests/
+          else
+            echo "No tests directory found, skipping"
+          fi
+
+      - name: Validate hook scripts
+        run: |
+          bash -n hooks/scripts/session-start.sh
+          bash -n hooks/scripts/session-end.sh
+          bash -n hooks/scripts/pre-compact.sh
+          bash -n hooks/scripts/post-compact.sh
+          bash -n hooks/scripts/plan-approved.sh
+          bash -n hooks/scripts/plan-modified.sh
+          bash -n hooks/scripts/health-check.sh
+          echo "All hook scripts pass syntax check"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: McpServer Copilot Plugin ${{ github.ref_name }}
+          body: |
+            ## McpServer GitHub Copilot CLI Plugin ${{ github.ref_name }}
+
+            Provides TODO management, session logging, requirements tracking, and GraphRAG knowledge graph via McpServer.
+
+            ### Installation
+
+            Add to your Copilot CLI by referencing the marketplace:
+            ```
+            gh copilot config add-marketplace https://github.com/sharpninja/mcpserver-copilot-plugin
+            ```
+
+            ### Prerequisites
+
+            - GitHub Copilot CLI
+            - McpServer running locally with `AGENTS-README-FIRST.yaml` marker file
+            - `mcpserver-repl` dotnet tool (auto-installed on first use)
+          files: |
+            plugin.json
+            .mcp.json
+            hooks.json

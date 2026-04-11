@@ -1,0 +1,30 @@
+{
+  "name": "mcpserver",
+  "version": "1.0.0",
+  "description": "Connect GitHub Copilot to McpServer for TODO management, session logging, requirements tracking, and GraphRAG knowledge graph operations.",
+  "author": {
+    "name": "Payton Byrd (The Sharp Ninja)",
+    "url": "https://github.com/sharpninja"
+  },
+  "homepage": "https://github.com/sharpninja/McpServer",
+  "repository": "https://github.com/sharpninja/mcpserver-copilot-plugin",
+  "license": "MIT",
+  "skills": [
+    { "path": "skills/todo/SKILL.md" },
+    { "path": "skills/session/SKILL.md" },
+    { "path": "skills/requirements/SKILL.md" },
+    { "path": "skills/graphrag/SKILL.md" }
+  ],
+  "hooks": { "path": "hooks.json" },
+  "mcpServers": {
+    "mcpserver": {
+      "type": "stdio",
+      "command": "mcpserver-repl",
+      "args": ["--agent-stdio"],
+      "env": {
+        "MCP_WORKSPACE_PATH": "${MCPSERVER_WORKSPACE_PATH}",
+        "PLUGIN_AGENT_NAME": "Copilot"
+      }
+    }
+  }
+}
