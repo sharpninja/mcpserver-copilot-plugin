@@ -47,9 +47,9 @@ CODE_EDITS="${CODE_EDITS:-0}"
 # registered in the MCP tool surface); auto-complete the turn here so Stop
 # is not wedged. Fall through to the explicit block only if self-heal fails.
 if [ "$TURN_STATUS" = "in_progress" ]; then
-    if [ -f "$CLAUDE_PLUGIN_ROOT/lib/repl-invoke.sh" ]; then
+    if [ -f "$PLUGIN_ROOT/lib/repl-invoke.sh" ]; then
         # shellcheck source=../../lib/repl-invoke.sh
-        source "$CLAUDE_PLUGIN_ROOT/lib/repl-invoke.sh" 2>/dev/null || true
+        source "$PLUGIN_ROOT/lib/repl-invoke.sh" 2>/dev/null || true
     fi
     if type _repl_workflow_complete_turn >/dev/null 2>&1; then
         AUTO_PARAMS="response: |
