@@ -5,3 +5,4 @@ cache/plan-todo-map.yaml
 cache/current-turn.yaml
 cache/todo-state.yaml
 cache/workspaces/
+.mcpServer/
