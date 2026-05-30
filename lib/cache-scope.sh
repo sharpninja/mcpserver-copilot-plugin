@@ -194,4 +194,35 @@ cache_scope_session_state_file() {
     printf '%s/session-state.yaml' "${CACHE_DIR:?CACHE_DIR is not initialized}"
 }
 
-export -f cache_scope_current_turn_file cache_scope_init cache_scope_select_session cache_scope_session_key cache_scope_session_state_file cache_scope_workspace_key cache_scope_workspace_path 2>/dev/null || true
+# ---------------------------------------------------------------------------
+# v4 parity: base64url workspace key (TR-MCP-AGENT-PARITY-013)
+# Matches V4CacheManager.GetScopedCachePath in @sharpninja/mcpserver-agent-core
+# ---------------------------------------------------------------------------
+cache_scope_workspace_key_v4() {
+    local workspace_path="${1:-${MCPSERVER_WORKSPACE_PATH:-${MCP_WORKSPACE_PATH:-$(pwd)}}}"
+    # Prefer node for exact Buffer.from().toString('base64') semantics
+    if command -v node >/dev/null 2>&1; then
+        node -e "process.stdout.write(Buffer.from(process.argv[1]).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''))" "$workspace_path" 2>/dev/null && return
+    fi
+    # Fallback: openssl
+    if command -v openssl >/dev/null 2>&1; then
+        printf '%s' "$workspace_path" | openssl base64 -A 2>/dev/null | tr '+/' '-_' | tr -d '=' && return
+    fi
+    # Fallback: python3
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import base64,sys; s=sys.argv[1].encode(); print(base64.urlsafe_b64encode(s).decode().rstrip('='),end='')" "$workspace_path" 2>/dev/null && return
+    fi
+    # Fallback: base64 (may not be urlsafe)
+    printf '%s' "$workspace_path" | base64 2>/dev/null | tr '+/' '-_' | tr -d '=' | tr -d '\n' && return
+}
+
+# v4 parity: .mcpServer/failsafe layout (TR-MCP-AGENT-PARITY-013)
+cache_scope_v4_failsafe_root() {
+    local workspace_path="${1:-${MCPSERVER_WORKSPACE_PATH:-${MCP_WORKSPACE_PATH:-$(pwd)}}}"
+    local agent_id="${2:-Copilot}"
+    local key
+    key="$(cache_scope_workspace_key_v4 "$workspace_path")"
+    printf '%s/.mcpServer/failsafe/%s/workspaces/%s' "$workspace_path" "$agent_id" "$key"
+}
+
+export -f cache_scope_current_turn_file cache_scope_init cache_scope_select_session cache_scope_session_key cache_scope_session_state_file cache_scope_workspace_key cache_scope_workspace_path cache_scope_workspace_key_v4 cache_scope_v4_failsafe_root 2>/dev/null || true
