@@ -14,7 +14,10 @@
     { "path": "skills/session/SKILL.md" },
     { "path": "skills/requirements/SKILL.md" },
     { "path": "skills/graphrag/SKILL.md" },
-    { "path": "skills/workspace/SKILL.md" }
+    { "path": "skills/workspace/SKILL.md" },
+    { "path": "skills/sync-logs/SKILL.md" },
+    { "path": "skills/commit-sync/SKILL.md" },
+    { "path": "skills/wrap-up/SKILL.md" }
   ],
   "hooks": { "path": "hooks.json" },
   "mcpServers": {
