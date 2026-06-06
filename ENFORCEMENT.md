@@ -21,6 +21,20 @@ follow, plus the helper scripts in `lib/` that automate the bookkeeping.
 These rules have no hook-based enforcement in Copilot (unlike Claude Code).
 Compliance is agent-driven.
 
+## Tool Name Surfaces
+
+Copilot-visible plugin tools use the host-facing names exposed by this plugin.
+The helper scripts still call `workflow.sessionlog.*`, `workflow.todo.*`, and
+`workflow.requirements.*` through the plugin workflow/REPL shim. Those
+`workflow.*` names are not literal native McpServer MCP tool names. Native
+McpServer `/mcp-transport` discovery uses names such as `sessionlog_*`,
+`todo_*`, and `requirements_*`; hosted-agent adapters may expose aliases such as
+`mcp_session_*`.
+
+Do not search generic MCP discovery for literal `workflow.*` names and call the
+plugin unavailable solely because those names are absent. Validate Copilot's
+plugin tools, marker trust, and helper script path instead.
+
 ## The Three Scripts
 
 The plugin ships three bash scripts in `lib/` that Copilot agents should invoke
