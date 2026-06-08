@@ -95,6 +95,7 @@ printf '    lastBuildStatus: %s\n' "$(yaml_quote "$(state_value "$turn_file" las
 printf '  namespaces:\n'
 printf '    - workflow.sessionlog\n'
 printf '    - workflow.todo\n'
+printf '    - workflow.memory\n'
 printf '    - workflow.requirements\n'
 printf '    - workflow.pendingImport\n'
 printf '    - todo\n'
