@@ -1,0 +1,2 @@
+lib/mcp.copilot.status.sh
+lib/plugin-env.sh

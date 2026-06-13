@@ -5,13 +5,37 @@ set -euo pipefail
 # Pending commands are stored as YAML files and replayed via repl_invoke.
 
 CACHE_MANAGER_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CACHE_MANAGER_PLUGIN_ROOT="${PLUGIN_ROOT_OVERRIDE:-$(cd "$CACHE_MANAGER_SCRIPT_DIR/.." && pwd)}"
-CACHE_DIR="${CACHE_MANAGER_PLUGIN_ROOT}/cache"
-PENDING_DIR="${CACHE_DIR}/pending"
 MAX_RETRIES=3
 
+if ! type resolve_cache_dir >/dev/null 2>&1; then
+    # shellcheck source=./resolve-cache-dir.sh
+    source "$CACHE_MANAGER_SCRIPT_DIR/resolve-cache-dir.sh"
+fi
+
+# Re-resolve on each call: CWD / env may shift between invocations.
+_cache_manager_cache_dir() { resolve_cache_dir; }
+
+# Pending writes are scoped per MCP session when MCP_SESSION_ID is set
+# (concept from codex commit 2f42e28), layered on the workspace-anchored
+# cache dir resolved above rather than the plugin install dir.
+_cache_manager_pending_dir() {
+    local base
+    base="$(_cache_manager_cache_dir)"
+    if [ -n "${MCP_SESSION_ID:-}" ]; then
+        if ! type cache_scope_session_key >/dev/null 2>&1 && [ -f "$CACHE_MANAGER_SCRIPT_DIR/cache-scope.sh" ]; then
+            # shellcheck source=./cache-scope.sh
+            source "$CACHE_MANAGER_SCRIPT_DIR/cache-scope.sh" 2>/dev/null || true
+        fi
+        if type cache_scope_session_key >/dev/null 2>&1; then
+            printf '%s/sessions/%s/pending' "$base" "$(cache_scope_session_key "$MCP_SESSION_ID")"
+            return 0
+        fi
+    fi
+    printf '%s/pending' "$base"
+}
+
 _ensure_cache_dirs() {
-    mkdir -p "$PENDING_DIR"
+    mkdir -p "$(_cache_manager_pending_dir)"
 }
 
 # cache_write <method> [params_yaml]
@@ -22,9 +46,12 @@ cache_write() {
     local params_yaml="${2:-}"
     _ensure_cache_dirs
 
+    local pending_dir
+    pending_dir="$(_cache_manager_pending_dir)"
+
     # Monotonic sequence: count existing files + 1
     local count
-    count=$(find "$PENDING_DIR" -maxdepth 1 -name '*.yaml' 2>/dev/null | wc -l | tr -d ' ')
+    count=$(find "$pending_dir" -maxdepth 1 -name '*.yaml' 2>/dev/null | wc -l | tr -d ' ')
     local seq
     seq=$(printf '%03d' $(( count + 1 )))
 
@@ -35,7 +62,7 @@ cache_write() {
     slug=$(echo "$method" | tr '.' '-')
     local filename="${seq}-${slug}.yaml"
 
-    local filepath="$PENDING_DIR/$filename"
+    local filepath="$pending_dir/$filename"
 
     {
         echo "id: \"${seq}\""
@@ -57,7 +84,7 @@ cache_write() {
 # Returns the count of pending items (integer on stdout)
 cache_status() {
     _ensure_cache_dirs
-    find "$PENDING_DIR" -maxdepth 1 -name '*.yaml' 2>/dev/null | wc -l | tr -d ' '
+    find "$(_cache_manager_pending_dir)" -maxdepth 1 -name '*.yaml' 2>/dev/null | wc -l | tr -d ' '
 }
 
 # cache_flush
@@ -73,9 +100,11 @@ cache_flush() {
 
     local flushed=0
     local failed=0
+    local pending_dir
+    pending_dir="$(_cache_manager_pending_dir)"
 
     local items
-    items=$(find "$PENDING_DIR" -maxdepth 1 -name '*.yaml' 2>/dev/null | sort)
+    items=$(find "$pending_dir" -maxdepth 1 -name '*.yaml' 2>/dev/null | sort)
 
     if [ -z "$items" ]; then
         echo "flushed=0 failed=0 pending=0"
@@ -115,4 +144,4 @@ cache_flush() {
     echo "flushed=${flushed} failed=${failed} pending=$(cache_status)"
 }
 
-export -f cache_write cache_status cache_flush _ensure_cache_dirs 2>/dev/null || true
+export -f cache_write cache_status cache_flush _ensure_cache_dirs _cache_manager_cache_dir _cache_manager_pending_dir 2>/dev/null || true
