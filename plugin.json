@@ -1,6 +1,6 @@
 {
   "name": "mcpserver",
-  "version": "1.1.1",
+  "version": "1.3.0",
   "description": "Connect GitHub Copilot to McpServer for TODO management, session logging, requirements tracking, GraphRAG knowledge graph operations, and per-turn + build-verification enforcement hooks.",
   "author": {
     "name": "Payton Byrd (The Sharp Ninja)",
@@ -10,21 +10,41 @@
   "repository": "https://github.com/sharpninja/mcpserver-copilot-plugin",
   "license": "MIT",
   "skills": [
-    { "path": "skills/todo/SKILL.md" },
-    { "path": "skills/session/SKILL.md" },
-    { "path": "skills/requirements/SKILL.md" },
-    { "path": "skills/graphrag/SKILL.md" },
-    { "path": "skills/workspace/SKILL.md" },
-    { "path": "skills/sync-logs/SKILL.md" },
-    { "path": "skills/commit-sync/SKILL.md" },
-    { "path": "skills/wrap-up/SKILL.md" }
+    {
+      "path": "skills/todo/SKILL.md"
+    },
+    {
+      "path": "skills/session/SKILL.md"
+    },
+    {
+      "path": "skills/requirements/SKILL.md"
+    },
+    {
+      "path": "skills/graphrag/SKILL.md"
+    },
+    {
+      "path": "skills/workspace/SKILL.md"
+    },
+    {
+      "path": "skills/sync-logs/SKILL.md"
+    },
+    {
+      "path": "skills/commit-sync/SKILL.md"
+    },
+    {
+      "path": "skills/wrap-up/SKILL.md"
+    }
   ],
-  "hooks": { "path": "hooks.json" },
+  "hooks": {
+    "path": "hooks.json"
+  },
   "mcpServers": {
     "mcpserver": {
       "type": "stdio",
       "command": "mcpserver-repl",
-      "args": ["--agent-stdio"],
+      "args": [
+        "--agent-stdio"
+      ],
       "env": {
         "MCP_WORKSPACE_PATH": "${MCPSERVER_WORKSPACE_PATH}",
         "PLUGIN_AGENT_NAME": "Copilot"
