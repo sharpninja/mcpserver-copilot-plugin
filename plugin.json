@@ -36,6 +36,12 @@
     },
     {
       "path": "skills/wrap-up/SKILL.md"
+    },
+    {
+      "path": "skills/reddit-draft/SKILL.md"
+    },
+    {
+      "path": "skills/reddit-publish/SKILL.md"
     }
   ],
   "hooks": {
