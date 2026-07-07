@@ -1,6 +1,6 @@
 ---
 name: Triage Reporting
-description: Use when Copilot discovers an incidental bug while working on another task and should submit it to MCP Server triage without changing focus.
+description: "Use when your agent discovers an incidental bug while working on another task and should submit it to MCP Server triage without changing focus. Triggers: 'triage', '/triage', 'submit a triage report', 'report an incidental bug', 'file this bug to triage', 'triage status'."
 version: 0.1.0
 ---
 
@@ -38,11 +38,13 @@ payload:
   requestId: req-20260625T120000Z-triage-report
   method: workflow.triage.report
   params:
-    title: mcpserver-copilot-plugin cannot submit triage_report
-    summary: The plugin exposes TODO tools but omits the triage report path.
-    component: mcpserver-copilot-plugin
-    errorSignature: triage_report_missing
-    reporterAgent: Copilot
+    title: Plugin wrapper hides triage_report validation errors
+    summary: The wrapper exits with success after a triage_report validation failure, masking the error.
+    component: mcpserver-plugin
+    affectedPaths:
+      - lib/repl-invoke.ps1
+    errorSignature: triage_validation_hidden
+    reporterAgent: <your-agent>
 ```
 
 After a successful response, record the returned `reportId`, `groupId`, `status`, and `quietDeadlineUtc` only if useful for the current audit trail, then continue the current task.
