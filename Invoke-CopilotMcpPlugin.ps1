@@ -14,9 +14,9 @@ param(
 
     [string]$ResponsePath,
 
-    [string]$WorkspacePath = (Get-Location).ProviderPath,
+    [string]$WorkspacePath = $(if ($env:MCP_WORKSPACE_PATH) { $env:MCP_WORKSPACE_PATH } elseif ($env:MCPSERVER_WORKSPACE_PATH) { $env:MCPSERVER_WORKSPACE_PATH } elseif ($env:COPILOT_WORKSPACE_PATH) { $env:COPILOT_WORKSPACE_PATH } elseif ($env:COPILOT_PROJECT_DIR) { $env:COPILOT_PROJECT_DIR } else { (Get-Location).ProviderPath }),
 
-    [string]$PluginRoot = $PSScriptRoot,
+    [string]$PluginRoot = $(if ($env:MCP_PLUGIN_ROOT) { $env:MCP_PLUGIN_ROOT } elseif ($env:COPILOT_PLUGIN_ROOT) { $env:COPILOT_PLUGIN_ROOT } elseif ($env:PLUGIN_ROOT) { $env:PLUGIN_ROOT } else { $PSScriptRoot }),
 
     [string]$CacheRoot,
 
@@ -98,45 +98,63 @@ function Read-TextInput {
     return ''
 }
 
-function Invoke-BashPluginScript {
+function Invoke-PowerShellPluginScript {
     param(
         [Parameter(Mandatory)][string]$ScriptPath,
         [string[]]$Arguments = @(),
         [string]$StandardInput = ''
     )
 
-    $bash = Resolve-BashExecutable $BashPath
+    $pwsh = (Get-Command pwsh.exe -ErrorAction Stop).Source
     $pluginRootFull = Resolve-FullPath $PluginRoot
     $workspaceFull = Resolve-FullPath $WorkspacePath
-    $cacheRootFull = if ($CacheRoot) {
+    $cacheOverrideFull = if ($CacheRoot) {
         Resolve-FullPath $CacheRoot
-    } elseif ($env:PLUGIN_ROOT_OVERRIDE) {
-        Resolve-FullPath $env:PLUGIN_ROOT_OVERRIDE
+    } elseif ($env:MCP_CACHE_DIR_OVERRIDE) {
+        Resolve-FullPath $env:MCP_CACHE_DIR_OVERRIDE
     } else {
-        $pluginRootFull
+        $null
+    }
+    $legacyCacheRootFull = if (-not $cacheOverrideFull -and $env:PLUGIN_ROOT_OVERRIDE) {
+        $legacyFull = Resolve-FullPath $env:PLUGIN_ROOT_OVERRIDE
+        if (-not [string]::Equals($legacyFull.TrimEnd('\\'), $pluginRootFull.TrimEnd('\\'), [System.StringComparison]::OrdinalIgnoreCase)) {
+            $legacyFull
+        }
     }
 
-    $pluginRootForBash = ConvertTo-BashPath $pluginRootFull
-    $workspaceForBash = ConvertTo-BashPath $workspaceFull
-    $cacheRootForBash = ConvertTo-BashPath $cacheRootFull
-
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = $bash
+    $startInfo.FileName = $pwsh
     $startInfo.WorkingDirectory = $workspaceFull
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
-    $startInfo.ArgumentList.Add((ConvertTo-BashPath $ScriptPath))
+    $startInfo.ArgumentList.Add('-NoLogo')
+    $startInfo.ArgumentList.Add('-NoProfile')
+    $startInfo.ArgumentList.Add('-NonInteractive')
+    $startInfo.ArgumentList.Add('-File')
+    $startInfo.ArgumentList.Add((Resolve-FullPath $ScriptPath))
     foreach ($argument in $Arguments) {
         $startInfo.ArgumentList.Add($argument)
     }
-    $startInfo.Environment['COPILOT_PLUGIN_ROOT'] = $pluginRootForBash
-    $startInfo.Environment['PLUGIN_ROOT'] = $pluginRootForBash
-    $startInfo.Environment['PLUGIN_ROOT_OVERRIDE'] = $cacheRootForBash
-    $startInfo.Environment['MCP_WORKSPACE_PATH'] = $workspaceForBash
-    $startInfo.Environment['MCPSERVER_WORKSPACE_PATH'] = $workspaceForBash
+    $startInfo.Environment['COPILOT_PLUGIN_ROOT'] = $pluginRootFull
+    $startInfo.Environment['PLUGIN_ROOT'] = $pluginRootFull
+    $startInfo.Environment['MCP_PLUGIN_ROOT'] = $pluginRootFull
+    [void]$startInfo.Environment.Remove('MCP_CACHE_DIR_OVERRIDE')
+    [void]$startInfo.Environment.Remove('PLUGIN_ROOT_OVERRIDE')
+    if ($cacheOverrideFull) {
+        $startInfo.Environment['MCP_CACHE_DIR_OVERRIDE'] = $cacheOverrideFull
+    } elseif ($legacyCacheRootFull) {
+        $startInfo.Environment['PLUGIN_ROOT_OVERRIDE'] = $legacyCacheRootFull
+    }
+    $startInfo.Environment['MCP_WORKSPACE_PATH'] = $workspaceFull
+    $startInfo.Environment['MCPSERVER_WORKSPACE_PATH'] = $workspaceFull
+    $startInfo.Environment['MCP_WORKSPACE_START_DIR'] = $workspaceFull
+    $startInfo.Environment['COPILOT_WORKSPACE_PATH'] = $workspaceFull
+    $startInfo.Environment['MCP_PLUGIN_HOST'] = 'copilot'
     $startInfo.Environment['PLUGIN_AGENT_NAME'] = 'Copilot'
+    $startInfo.Environment['PLUGIN_AGENT_DEFAULT'] = 'Copilot'
+    $startInfo.Environment['MCP_AGENT_NAME'] = 'Copilot'
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
@@ -170,7 +188,7 @@ $pluginRootFull = Resolve-FullPath $PluginRoot
 
 switch ($Command) {
     'Status' {
-        Invoke-BashPluginScript -ScriptPath (Join-Path $pluginRootFull 'lib\mcp.copilot.status.sh')
+        Invoke-PowerShellPluginScript -ScriptPath (Join-Path $pluginRootFull 'lib\mcp-status.ps1')
     }
     'Invoke' {
         if (-not $Method) {
@@ -178,7 +196,7 @@ switch ($Command) {
         }
 
         $paramsText = Read-TextInput -Inline $Params -HasInline:$($PSBoundParameters.ContainsKey('Params')) -Path $ParamsPath
-        Invoke-BashPluginScript -ScriptPath (Join-Path $pluginRootFull 'lib\repl-invoke.sh') -Arguments @($Method) -StandardInput $paramsText
+        Invoke-PowerShellPluginScript -ScriptPath (Join-Path $pluginRootFull 'lib\repl-invoke.ps1') -Arguments @('-Method', $Method, '-ParamsYaml', ($paramsText ?? ''))
     }
     'CompleteTurn' {
         $responseText = Read-TextInput -Inline $Response -HasInline:$($PSBoundParameters.ContainsKey('Response')) -Path $ResponsePath
@@ -186,6 +204,6 @@ switch ($Command) {
             $responseText = 'Turn completed.'
         }
 
-        Invoke-BashPluginScript -ScriptPath (Join-Path $pluginRootFull 'lib\final-response.sh') -StandardInput $responseText
+        Invoke-PowerShellPluginScript -ScriptPath (Join-Path $pluginRootFull 'lib\final-response.ps1') -StandardInput $responseText
     }
 }
