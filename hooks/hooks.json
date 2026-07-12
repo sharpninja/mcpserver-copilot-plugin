@@ -1,0 +1,108 @@
+{
+  "description": "McpServer integration hooks for workspace discovery, session tracking, plan synchronization, and per-turn/build enforcement",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/session-start.ps1\"",
+            "timeout": 15,
+            "statusMessage": "Connecting to McpServer..."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/session-end.ps1\"",
+            "timeout": 10,
+            "statusMessage": "Finalizing MCP session..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/pre-compact.ps1\"",
+            "timeout": 10,
+            "statusMessage": "Persisting session state..."
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/post-compact.ps1\"",
+            "timeout": 15,
+            "statusMessage": "Reloading MCP context..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/user-prompt-submit.ps1\"",
+            "timeout": 10,
+            "statusMessage": "Opening session log turn..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/stop-gate.ps1\"",
+            "timeout": 10,
+            "statusMessage": "Verifying session log + build gates..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/plan-approved.ps1\"",
+            "timeout": 15,
+            "statusMessage": "Creating MCP TODO for approved plan..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/plan-modified.ps1\"",
+            "if": "Write(**/plans/**)|Edit(**/plans/**)",
+            "timeout": 10,
+            "statusMessage": "Syncing plan changes to MCP TODO..."
+          },
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File \"${COPILOT_PLUGIN_ROOT:-${PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}}/hooks/scripts/code-verify.ps1\"",
+            "timeout": 120,
+            "statusMessage": "Verifying build after code edit..."
+          }
+        ]
+      }
+    ]
+  }
+}
