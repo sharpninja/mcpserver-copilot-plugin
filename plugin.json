@@ -42,6 +42,9 @@
     },
     {
       "path": "skills/reddit-publish/SKILL.md"
+    },
+    {
+      "path": "skills/add-profile/SKILL.md"
     }
   ],
   "hooks": {
